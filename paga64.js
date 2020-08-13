@@ -1411,6 +1411,13 @@ class HelpScreen {
         resetKeys();
     }
 
+    onClick(x, y) {
+        if (inRect(x, y, 0, 57, 32, 7)) {
+            this.goToMainMenu();
+            return;
+        }
+    }
+
     render() {
         ctx.drawImage(
             sprites,
@@ -1520,6 +1527,9 @@ class Game {
 
     nextRoom() {
         playSound(roomTransitionSound);
+        if (encoder) {
+            endGif();
+        }
         if (this.currRoom === ROOMS.length - 1) {
             this.currRoom = 0;
             this.startRoom();
@@ -1790,6 +1800,12 @@ class Game {
             this.score = this.startScore;
             this.startRoom();
         }
+        if (keys[219]) {
+            startGif();
+        }
+        if (keys[221]) {
+            endGif();
+        }
         if (this.player.alive) {
             this.entities.forEach(e => e.ai());
         }
@@ -1836,18 +1852,20 @@ class Game {
     render() {
         if (this.menu) {
             this.menu.render();
-            return;
+        } else {
+            ctx.drawImage(sprites, 64, 0, WIDTH, HEIGHT, 0, 0, WIDTH, HEIGHT);
+            drawNumber(19, 1, this.currRoom + 1);
+            drawNumber(51, 1, this.score);
+                this.renderMap();
+                this.entities.forEach(e => e.render());
+                this.effects.forEach(e => e.render());
+            this.frame++;
+            if (this.help) {
+                this.help.render();
+            }
         }
-        ctx.drawImage(sprites, 64, 0, WIDTH, HEIGHT, 0, 0, WIDTH, HEIGHT);
-        drawNumber(19, 1, this.currRoom + 1);
-        drawNumber(51, 1, this.score);
-            this.renderMap();
-            this.entities.forEach(e => e.render());
-            this.effects.forEach(e => e.render());
-        this.frame++;
-        if (this.help) {
-            this.help.render();
-            return;
+        if (encoder) {
+            encoder.addFrame(ctx);
         }
     }
 
@@ -1898,6 +1916,26 @@ function inRect(px, py, rx, ry, rw, rh) {
     return inRange(px, rx, rx + rw) && inRange(py, ry, ry + rh);
 }
 
+function startGif() {
+    if (encoder) {
+        // Already recording
+        return;
+    }
+    encoder = new GIFEncoder();
+    encoder.setRepeat(0);
+    encoder.setDelay(Math.round(1000.0 / FPS));
+    encoder.setQuality(1);
+    encoder.start();
+}
+
+function endGif() {
+    if (encoder) {
+        encoder.finish();
+        encoder.download('paga64-room' + (game.currRoom + 1).toString() + '.gif');
+        encoder = null;
+    }
+}
+
 const sprites = new Image();
 sprites.src = 'paga64.png';
 
@@ -1922,6 +1960,7 @@ const ctx = canvas.getContext('2d', {alpha: false});
 const keys = new Array(256);
 
 const game = new Game();
+let encoder = null;
 
 document.addEventListener('keydown', e => setKey(e, true));
 document.addEventListener('keyup', e => setKey(e, false));
